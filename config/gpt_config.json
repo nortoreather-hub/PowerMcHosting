@@ -1,0 +1,6 @@
+{
+  "gpt5_mini_enabled_for_all_clients": true,
+  "managed_by": "assistant",
+  "note": "Toggle set to enable GPT-5 mini for all clients. Commit & deploy to apply.",
+  "updated_at": "2025-12-18T00:00:00Z"
+}

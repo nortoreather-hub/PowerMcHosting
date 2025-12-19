@@ -150,13 +150,17 @@ app.post('/api/servers', auth, requireRole('owner'), (req, res) => {
 });
 
 // Grant access to a user for a server
-app.post('/api/servers/:id/grant', auth, requireRole('owner'), (req, res) => {
+app.post('/api/servers/:id/grant', auth, (req, res) => {
   const sid = req.params.id;
   const { username } = req.body || {};
   if (!username) return res.status(400).json({ error: 'username required' });
   const servers = readJSON(serversPath, []);
   const s = servers.find(x => x.id === sid);
   if (!s) return res.status(404).json({ error: 'server not found' });
+  // Owners can grant; admins can grant only for servers they already have access to
+  if (req.user.role !== 'owner') {
+    if (req.user.role !== 'admin' || !(s.access || []).includes(req.user.username)) return res.status(403).json({ error: 'forbidden' });
+  }
   s.access = s.access || [];
   if (!s.access.includes(username)) s.access.push(username);
   writeJSON(serversPath, servers);
@@ -164,12 +168,16 @@ app.post('/api/servers/:id/grant', auth, requireRole('owner'), (req, res) => {
 });
 
 // Revoke access
-app.post('/api/servers/:id/revoke', auth, requireRole('owner'), (req, res) => {
+app.post('/api/servers/:id/revoke', auth, (req, res) => {
   const sid = req.params.id;
   const { username } = req.body || {};
   const servers = readJSON(serversPath, []);
   const s = servers.find(x => x.id === sid);
   if (!s) return res.status(404).json({ error: 'server not found' });
+  // Owners can revoke; admins can revoke only for servers they already have access to
+  if (req.user.role !== 'owner') {
+    if (req.user.role !== 'admin' || !(s.access || []).includes(req.user.username)) return res.status(403).json({ error: 'forbidden' });
+  }
   s.access = (s.access || []).filter(u => u !== username);
   writeJSON(serversPath, servers);
   res.json({ ok: true });

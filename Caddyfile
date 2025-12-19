@@ -1,0 +1,7 @@
+powerhost.org, www.powerhost.org {
+    reverse_proxy panel:3000
+}
+
+play.powermc.fun {
+    reverse_proxy minecraft:25565
+}

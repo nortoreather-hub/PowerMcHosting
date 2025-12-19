@@ -8,6 +8,19 @@ Next steps to apply change:
 2. Commit the change and push to your repository.
 3. Deploy via your normal deployment/CI so services pick up the new config.
 
+If you want to run the panel and proxy it to a production domain (example `powerhost.org`):
+
+1. Add DNS A record pointing `powerhost.org` (and optionally `play.powermc.fun`) to your server public IP.
+2. Use the included `docker-compose.yml` which now includes a `caddy` reverse proxy that will obtain TLS certificates automatically for `powerhost.org`.
+3. Start services:
+
+```bash
+docker compose up --build -d
+```
+
+Caddy will proxy `powerhost.org` to the panel service and terminate TLS. Ensure ports 80 and 443 are reachable.
+
+
 Suggested commands:
 
 ```bash

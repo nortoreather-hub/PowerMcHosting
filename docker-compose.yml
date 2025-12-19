@@ -5,9 +5,24 @@ services:
     ports:
       - "3000:3000"
     environment:
+      - VIRTUAL_HOST=powerhost.org
+      - VIRTUAL_PORT=3000
+    environment:
       - PORT=3000
     volumes:
       - ./:/app
+  caddy:
+    image: caddy:2
+    depends_on:
+      - panel
+      - minecraft
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
   minecraft:
     image: itzg/minecraft-server
     environment:

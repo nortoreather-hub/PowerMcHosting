@@ -14,6 +14,7 @@ const DATA_DIR = path.join(__dirname, 'data');
 if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
 const usersPath = path.join(DATA_DIR, 'users.json');
 const serversPath = path.join(DATA_DIR, 'servers.json');
+const playersPath = path.join(DATA_DIR, 'players.json');
 
 const JWT_SECRET = process.env.JWT_SECRET || 'dev-secret';
 
@@ -40,6 +41,9 @@ function findUser(username) {
   const users = readJSON(usersPath, []);
   return users.find(u => u.username === username);
 }
+
+function readPlayers() { return readJSON(playersPath, { bannedIps: [], operators: [] }); }
+function writePlayers(p) { writeJSON(playersPath, p); }
 
 // Auth
 app.post('/api/login', (req, res) => {
@@ -195,6 +199,58 @@ app.post('/api/servers/:id/memory', auth, requireRole('admin'), (req, res) => {
   if (req.user.role !== 'owner' && !(s.access || []).includes(req.user.username)) return res.status(403).json({ error: 'forbidden' });
   s.memory = memory;
   writeJSON(serversPath, servers);
+  res.json({ ok: true });
+});
+
+// Players management endpoints
+app.get('/api/players', auth, (req, res) => {
+  const players = readPlayers();
+  res.json(players);
+});
+
+function isAdminOrOwner(req) {
+  return req.user && (req.user.role === 'owner' || req.user.role === 'admin');
+}
+
+app.post('/api/players/ban', auth, (req, res) => {
+  if (!isAdminOrOwner(req)) return res.status(403).json({ error: 'forbidden' });
+  const { ip } = req.body || {};
+  if (!ip) return res.status(400).json({ error: 'ip required' });
+  const p = readPlayers();
+  p.bannedIps = p.bannedIps || [];
+  if (!p.bannedIps.includes(ip)) p.bannedIps.push(ip);
+  writePlayers(p);
+  res.json({ ok: true });
+});
+
+app.post('/api/players/unban', auth, (req, res) => {
+  if (!isAdminOrOwner(req)) return res.status(403).json({ error: 'forbidden' });
+  const { ip } = req.body || {};
+  if (!ip) return res.status(400).json({ error: 'ip required' });
+  const p = readPlayers();
+  p.bannedIps = (p.bannedIps || []).filter(x => x !== ip);
+  writePlayers(p);
+  res.json({ ok: true });
+});
+
+app.post('/api/players/op', auth, (req, res) => {
+  if (!isAdminOrOwner(req)) return res.status(403).json({ error: 'forbidden' });
+  const { username } = req.body || {};
+  if (!username) return res.status(400).json({ error: 'username required' });
+  const p = readPlayers();
+  p.operators = p.operators || [];
+  if (!p.operators.includes(username)) p.operators.push(username);
+  writePlayers(p);
+  res.json({ ok: true });
+});
+
+app.post('/api/players/deop', auth, (req, res) => {
+  if (!isAdminOrOwner(req)) return res.status(403).json({ error: 'forbidden' });
+  const { username } = req.body || {};
+  if (!username) return res.status(400).json({ error: 'username required' });
+  const p = readPlayers();
+  p.operators = (p.operators || []).filter(x => x !== username);
+  writePlayers(p);
   res.json({ ok: true });
 });
 

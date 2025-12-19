@@ -31,6 +31,19 @@
       <input id="u_pass" placeholder="password" />
       <select id="u_role"><option value="admin">admin</option><option value="owner">owner</option></select>
       <button id="btnCreateUser">Create</button>
+
+      <h3>Players</h3>
+      <div id="players">
+        <h4>Banned IPs</h4>
+        <div id="bannedIps"></div>
+        <input id="ban_ip" placeholder="IP to ban" /> <button id="btnBan">Ban IP</button>
+        <input id="unban_ip" placeholder="IP to unban" /> <button id="btnUnban">Unban IP</button>
+
+        <h4>Operators</h4>
+        <div id="ops"></div>
+        <input id="op_user" placeholder="username to op" /> <button id="btnOp">Op</button>
+        <input id="deop_user" placeholder="username to deop" /> <button id="btnDeop">Deop</button>
+      </div>
     </div>
 
     <script>
@@ -93,9 +106,30 @@
         if (r.status===200) r.body.forEach(u => el.innerHTML += `<div>${u.username} (${u.role})</div>`);
       }
 
+      async function loadPlayers(){
+        const r = await api('/players');
+        if (r.status !== 200) return;
+        const data = r.body || {};
+        document.getElementById('bannedIps').innerText = (data.bannedIps||[]).join(', ');
+        document.getElementById('ops').innerText = (data.operators||[]).join(', ');
+      }
+
       document.getElementById('btnCreateUser').onclick = async ()=>{
         const username = document.getElementById('u_name').value; const password = document.getElementById('u_pass').value; const role = document.getElementById('u_role').value;
         await api('/users', { method: 'POST', body: JSON.stringify({ username, password, role }) }); loadUsers();
+      };
+
+      document.getElementById('btnBan').onclick = async ()=>{
+        const ip = document.getElementById('ban_ip').value; await api('/players/ban', { method: 'POST', body: JSON.stringify({ ip }) }); loadPlayers();
+      };
+      document.getElementById('btnUnban').onclick = async ()=>{
+        const ip = document.getElementById('unban_ip').value; await api('/players/unban', { method: 'POST', body: JSON.stringify({ ip }) }); loadPlayers();
+      };
+      document.getElementById('btnOp').onclick = async ()=>{
+        const u = document.getElementById('op_user').value; await api('/players/op', { method: 'POST', body: JSON.stringify({ username: u }) }); loadPlayers();
+      };
+      document.getElementById('btnDeop').onclick = async ()=>{
+        const u = document.getElementById('deop_user').value; await api('/players/deop', { method: 'POST', body: JSON.stringify({ username: u }) }); loadPlayers();
       };
     </script>
   </body>

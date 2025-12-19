@@ -1,0 +1,40 @@
+version: '3.8'
+services:
+  panel:
+    build: .
+    ports:
+      - "3000:3000"
+    environment:
+      - VIRTUAL_HOST=powerhost.org
+      - VIRTUAL_PORT=3000
+    environment:
+      - PORT=3000
+    volumes:
+      - ./:/app
+  caddy:
+    image: caddy:2
+    depends_on:
+      - panel
+      - minecraft
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+  minecraft:
+    image: itzg/minecraft-server
+    environment:
+      EULA: "TRUE"
+      ENABLE_RCON: "true"
+      RCON_PASSWORD: "changeme"
+      RCON_PORT: "25575"
+    ports:
+      - "25565:25565"
+      - "25575:25575"
+    volumes:
+      - mc_data:/data
+
+volumes:
+  mc_data:

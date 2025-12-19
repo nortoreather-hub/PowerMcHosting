@@ -1,0 +1,19 @@
+{
+  "name": "powerhosting-panel",
+  "version": "0.2.0",
+  "description": "PowerHosting minimal admin panel for Minecraft server access management",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "author": "PowerHosting",
+  "license": "MIT",
+  "dependencies": {
+    "cors": "^2.8.5",
+    "express": "^4.18.2",
+    "jsonwebtoken": "^9.0.0",
+    "bcryptjs": "^2.4.3",
+    "nodemailer": "^6.9.4",
+    "rcon-client": "^5.0.1"
+  }
+}

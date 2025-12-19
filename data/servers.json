@@ -1,0 +1,27 @@
+[
+  {
+    "id": "sv1",
+    "name": "Test Server",
+    "host": "minecraft",
+    "port": 25565,
+    "rconPort": 25575,
+    "rconPassword": "changeme",
+    "memory": "1G",
+    "access": ["owner"]
+  }
+  ,
+  {
+    "id": "powermc",
+    "name": "PowerMc",
+    "host": "powermc",
+    "port": 25565,
+    "rconPort": 25575,
+    "rconPassword": "changeme",
+    "memory": "unlimited",
+    "cores": "unlimited",
+    "owner": "owner",
+    "access": ["owner"],
+    "domain": "play.powermc.fun",
+    "publicAddress": "play.powermc.fun:25565"
+  }
+]

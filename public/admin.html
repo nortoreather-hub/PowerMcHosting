@@ -1,0 +1,160 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>PowerHosting Admin</title>
+    <style>
+      body{font-family:system-ui,Arial;margin:0;background:#ffffff}
+      header{background:#ffffff;border-bottom:1px solid #e5e7eb;padding:12px 20px;box-shadow:0 1px 0 rgba(0,0,0,0.04)}
+      header h1{margin:0;font-size:18px}
+      main{padding:20px}
+      input,button{padding:6px;margin:4px}
+    </style>
+  </head>
+  <body>
+    <header>
+      <h1>PowerHost — Hosting Of PowerMc</h1>
+    </header>
+    <main>
+    <div id="login">
+      <h3>Login</h3>
+      <input id="username" placeholder="username" />
+      <input id="password" type="password" placeholder="password" />
+      <button id="btnLogin">Login</button>
+      <div id="loginMsg"></div>
+    </div>
+
+    <div id="panel" style="display:none">
+      <h3>Servers</h3>
+      <div id="servers"></div>
+      <h4>Add Server</h4>
+      <input id="s_id" placeholder="id" />
+      <input id="s_name" placeholder="name" />
+      <input id="s_memory" placeholder="memory (e.g. 1G)" />
+      <button id="btnAddServer">Add</button>
+      <h4>Users (owner only)</h4>
+      <div id="users"></div>
+      <h4>Create User</h4>
+      <input id="u_name" placeholder="username" />
+      <input id="u_pass" placeholder="password" />
+      <select id="u_role"><option value="admin">admin</option><option value="owner">owner</option></select>
+      <button id="btnCreateUser">Create</button>
+
+      <h3>Players</h3>
+      <div id="players">
+        <label for="player_server">Target server:</label>
+        <select id="player_server"></select>
+        <br/>
+        <h4>Banned IPs</h4>
+        <div id="bannedIps"></div>
+        <input id="ban_ip" placeholder="IP to ban" /> <button id="btnBan">Ban IP</button>
+        <input id="unban_ip" placeholder="IP to unban" /> <button id="btnUnban">Unban IP</button>
+
+        <h4>Operators</h4>
+        <div id="ops"></div>
+        <input id="op_user" placeholder="username to op" /> <button id="btnOp">Op</button>
+        <input id="deop_user" placeholder="username to deop" /> <button id="btnDeop">Deop</button>
+      </div>
+    </div>
+    </main>
+
+    <script>
+      const api = (path, opts={}) => {
+        const token = localStorage.getItem('ph_token');
+        opts.headers = opts.headers || {};
+        opts.headers['Content-Type'] = 'application/json';
+        if (token) opts.headers['Authorization'] = 'Bearer ' + token;
+        return fetch('/api' + path, opts).then(r => r.json().then(b => ({status: r.status, body: b}))); 
+      };
+
+      document.getElementById('btnLogin').onclick = async () => {
+        const username = document.getElementById('username').value;
+        const password = document.getElementById('password').value;
+        const r = await api('/login', { method: 'POST', body: JSON.stringify({ username, password }) });
+        if (r.status === 200) { localStorage.setItem('ph_token', r.body.token); showPanel(); }
+        else document.getElementById('loginMsg').innerText = r.body.error || 'login failed';
+      };
+
+      async function showPanel(){
+        document.getElementById('login').style.display='none';
+        document.getElementById('panel').style.display='block';
+        await loadServers();
+        await loadUsers();
+      }
+
+      async function loadServers(){
+        const r = await api('/servers');
+        const el = document.getElementById('servers'); el.innerHTML='';
+        if (r.status!==200) { el.innerText = r.body.error || 'error'; return; }
+        r.body.forEach(s => {
+          const d = document.createElement('div');
+          const publicAddr = s.publicAddress || s.domain || s.host || '';
+          const publicLink = s.domain ? `<a href="https://${s.domain}" target="_blank">${publicAddr}</a>` : `${publicAddr}`;
+          d.innerHTML = `<strong>${s.name}</strong> (id:${s.id}) memory: ${s.memory || '1G'} access: ${ (s.access||[]).join(',') } <br/>` +
+            `<div>Public: ${publicLink}</div>` +
+            `<input placeholder="username to grant" id="g_${s.id}" /> <button data-id="${s.id}" class="btnGrant">Grant</button> <button data-id="${s.id}" class="btnRevoke">Revoke</button>` +
+            `<br/><input placeholder="set memory (e.g. 2G)" id="m_${s.id}" /> <button data-id="${s.id}" class="btnSetMemory">Set Memory</button>`;
+          el.appendChild(d);
+        });
+        document.querySelectorAll('.btnGrant').forEach(b=>b.onclick = async ev=>{
+          const id = ev.target.dataset.id; const u = document.getElementById('g_'+id).value;
+          await api('/servers/'+id+'/grant', { method: 'POST', body: JSON.stringify({ username: u }) }); loadServers();
+        });
+        document.querySelectorAll('.btnRevoke').forEach(b=>b.onclick = async ev=>{
+          const id = ev.target.dataset.id; const u = document.getElementById('g_'+id).value;
+          await api('/servers/'+id+'/revoke', { method: 'POST', body: JSON.stringify({ username: u }) }); loadServers();
+        });
+        document.querySelectorAll('.btnSetMemory').forEach(b=>b.onclick = async ev=>{
+          const id = ev.target.dataset.id; const m = document.getElementById('m_'+id).value;
+          await api('/servers/'+id+'/memory', { method: 'POST', body: JSON.stringify({ memory: m }) }); loadServers();
+        });
+      }
+
+      document.getElementById('btnAddServer').onclick = async ()=>{
+        const id = document.getElementById('s_id').value; const name = document.getElementById('s_name').value; const memory = document.getElementById('s_memory').value;
+        await api('/servers', { method: 'POST', body: JSON.stringify({ id, name, memory }) }); loadServers();
+      };
+
+      async function loadUsers(){
+        const r = await api('/users');
+        const el = document.getElementById('users'); el.innerHTML='';
+        if (r.status===200) r.body.forEach(u => el.innerHTML += `<div>${u.username} (${u.role})</div>`);
+      }
+
+      async function loadPlayers(){
+        const r = await api('/players');
+        if (r.status !== 200) return;
+        const data = r.body || {};
+        document.getElementById('bannedIps').innerText = (data.bannedIps||[]).join(', ');
+        document.getElementById('ops').innerText = (data.operators||[]).join(', ');
+        // populate server select
+        const servers = (await api('/servers')).body || [];
+        const sel = document.getElementById('player_server'); sel.innerHTML = '';
+        servers.forEach(s => { const o = document.createElement('option'); o.value = s.id; o.text = s.name + ' ('+s.id+')'; sel.appendChild(o); });
+      }
+
+      document.getElementById('btnCreateUser').onclick = async ()=>{
+        const username = document.getElementById('u_name').value; const password = document.getElementById('u_pass').value; const role = document.getElementById('u_role').value;
+        await api('/users', { method: 'POST', body: JSON.stringify({ username, password, role }) }); loadUsers();
+      };
+
+      document.getElementById('btnBan').onclick = async ()=>{
+        const ip = document.getElementById('ban_ip').value; const serverId = document.getElementById('player_server').value; 
+        await api('/players/ban', { method: 'POST', body: JSON.stringify({ ip, serverId }) }); loadPlayers();
+      };
+      document.getElementById('btnUnban').onclick = async ()=>{
+        const ip = document.getElementById('unban_ip').value; const serverId = document.getElementById('player_server').value; 
+        await api('/players/unban', { method: 'POST', body: JSON.stringify({ ip, serverId }) }); loadPlayers();
+      };
+      document.getElementById('btnOp').onclick = async ()=>{
+        const u = document.getElementById('op_user').value; const serverId = document.getElementById('player_server').value; 
+        await api('/players/op', { method: 'POST', body: JSON.stringify({ username: u, serverId }) }); loadPlayers();
+      };
+      document.getElementById('btnDeop').onclick = async ()=>{
+        const u = document.getElementById('deop_user').value; const serverId = document.getElementById('player_server').value; 
+        await api('/players/deop', { method: 'POST', body: JSON.stringify({ username: u, serverId }) }); loadPlayers();
+      };
+    </script>
+  </body>
+</html>

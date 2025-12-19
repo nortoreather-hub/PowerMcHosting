@@ -22,6 +22,7 @@
       <h4>Add Server</h4>
       <input id="s_id" placeholder="id" />
       <input id="s_name" placeholder="name" />
+      <input id="s_memory" placeholder="memory (e.g. 1G)" />
       <button id="btnAddServer">Add</button>
       <h4>Users (owner only)</h4>
       <div id="users"></div>
@@ -62,8 +63,9 @@
         if (r.status!==200) { el.innerText = r.body.error || 'error'; return; }
         r.body.forEach(s => {
           const d = document.createElement('div');
-          d.innerHTML = `<strong>${s.name}</strong> (id:${s.id}) access: ${ (s.access||[]).join(',') } <br/>` +
-            `<input placeholder="username to grant" id="g_${s.id}" /> <button data-id="${s.id}" class="btnGrant">Grant</button> <button data-id="${s.id}" class="btnRevoke">Revoke</button>`;
+          d.innerHTML = `<strong>${s.name}</strong> (id:${s.id}) memory: ${s.memory || '1G'} access: ${ (s.access||[]).join(',') } <br/>` +
+            `<input placeholder="username to grant" id="g_${s.id}" /> <button data-id="${s.id}" class="btnGrant">Grant</button> <button data-id="${s.id}" class="btnRevoke">Revoke</button>` +
+            `<br/><input placeholder="set memory (e.g. 2G)" id="m_${s.id}" /> <button data-id="${s.id}" class="btnSetMemory">Set Memory</button>`;
           el.appendChild(d);
         });
         document.querySelectorAll('.btnGrant').forEach(b=>b.onclick = async ev=>{
@@ -74,11 +76,15 @@
           const id = ev.target.dataset.id; const u = document.getElementById('g_'+id).value;
           await api('/servers/'+id+'/revoke', { method: 'POST', body: JSON.stringify({ username: u }) }); loadServers();
         });
+        document.querySelectorAll('.btnSetMemory').forEach(b=>b.onclick = async ev=>{
+          const id = ev.target.dataset.id; const m = document.getElementById('m_'+id).value;
+          await api('/servers/'+id+'/memory', { method: 'POST', body: JSON.stringify({ memory: m }) }); loadServers();
+        });
       }
 
       document.getElementById('btnAddServer').onclick = async ()=>{
-        const id = document.getElementById('s_id').value; const name = document.getElementById('s_name').value;
-        await api('/servers', { method: 'POST', body: JSON.stringify({ id, name }) }); loadServers();
+        const id = document.getElementById('s_id').value; const name = document.getElementById('s_name').value; const memory = document.getElementById('s_memory').value;
+        await api('/servers', { method: 'POST', body: JSON.stringify({ id, name, memory }) }); loadServers();
       };
 
       async function loadUsers(){

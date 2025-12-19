@@ -81,11 +81,11 @@ app.get('/api/servers', auth, (req, res) => {
 });
 
 app.post('/api/servers', auth, requireRole('owner'), (req, res) => {
-  const { id, name, host, port, rconPort, rconPassword } = req.body || {};
+  const { id, name, host, port, rconPort, rconPassword, memory } = req.body || {};
   if (!id || !name) return res.status(400).json({ error: 'id and name required' });
   const servers = readJSON(serversPath, []);
   if (servers.find(s => s.id === id)) return res.status(409).json({ error: 'server id exists' });
-  servers.push({ id, name, host, port, rconPort, rconPassword, access: [] });
+  servers.push({ id, name, host, port, rconPort, rconPassword, memory: memory || '1G', access: [] });
   writeJSON(serversPath, servers);
   res.json({ ok: true });
 });
@@ -112,6 +112,21 @@ app.post('/api/servers/:id/revoke', auth, requireRole('owner'), (req, res) => {
   const s = servers.find(x => x.id === sid);
   if (!s) return res.status(404).json({ error: 'server not found' });
   s.access = (s.access || []).filter(u => u !== username);
+  writeJSON(serversPath, servers);
+  res.json({ ok: true });
+});
+
+// Set server memory (admins and owners). Admins must have access to the server.
+app.post('/api/servers/:id/memory', auth, requireRole('admin'), (req, res) => {
+  const sid = req.params.id;
+  const { memory } = req.body || {};
+  if (!memory) return res.status(400).json({ error: 'memory required' });
+  const servers = readJSON(serversPath, []);
+  const s = servers.find(x => x.id === sid);
+  if (!s) return res.status(404).json({ error: 'server not found' });
+  // If not owner, ensure admin has explicit access to this server
+  if (req.user.role !== 'owner' && !(s.access || []).includes(req.user.username)) return res.status(403).json({ error: 'forbidden' });
+  s.memory = memory;
   writeJSON(serversPath, servers);
   res.json({ ok: true });
 });

@@ -3,6 +3,8 @@ const fs = require('fs');
 const path = require('path');
 const jwt = require('jsonwebtoken');
 const cors = require('cors');
+const bcrypt = require('bcryptjs');
+const nodemailer = require('nodemailer');
 
 const app = express();
 app.use(cors());
@@ -14,6 +16,18 @@ const usersPath = path.join(DATA_DIR, 'users.json');
 const serversPath = path.join(DATA_DIR, 'servers.json');
 
 const JWT_SECRET = process.env.JWT_SECRET || 'dev-secret';
+
+// Optional SMTP config for sending verification emails
+const SMTP_HOST = process.env.SMTP_HOST;
+const SMTP_PORT = process.env.SMTP_PORT;
+const SMTP_USER = process.env.SMTP_USER;
+const SMTP_PASS = process.env.SMTP_PASS;
+const FROM_EMAIL = process.env.FROM_EMAIL || `no-reply@${process.env.HOSTNAME || 'example.com'}`;
+
+let mailer = null;
+if (SMTP_HOST && SMTP_USER && SMTP_PASS) {
+  mailer = nodemailer.createTransport({ host: SMTP_HOST, port: Number(SMTP_PORT) || 587, auth: { user: SMTP_USER, pass: SMTP_PASS } });
+}
 
 function readJSON(p, fallback) {
   try { return JSON.parse(fs.readFileSync(p, 'utf8') || 'null') || fallback; }
@@ -33,8 +47,53 @@ app.post('/api/login', (req, res) => {
   if (!username || !password) return res.status(400).json({ error: 'username+password required' });
   const user = findUser(username);
   if (!user || user.password !== password) return res.status(401).json({ error: 'invalid credentials' });
+  // support bcrypt-hashed passwords and plaintext legacy passwords
+  const pwMatches = user.password && user.password.startsWith('$2') ? bcrypt.compareSync(password, user.password) : (user.password === password);
+  if (!pwMatches) return res.status(401).json({ error: 'invalid credentials' });
+  if (user.verified === false) return res.status(403).json({ error: 'email not verified' });
   const token = jwt.sign({ username: user.username, role: user.role }, JWT_SECRET, { expiresIn: '12h' });
   res.json({ token });
+});
+
+// Signup endpoint — creates a new user and sends verification email if mailer configured
+app.post('/api/signup', (req, res) => {
+  const { username, password, email } = req.body || {};
+  if (!username || !password || !email) return res.status(400).json({ error: 'username,password,email required' });
+  const users = readJSON(usersPath, []);
+  if (users.find(u => u.username === username)) return res.status(409).json({ error: 'username exists' });
+  if (users.find(u => u.email === email)) return res.status(409).json({ error: 'email exists' });
+  const hash = bcrypt.hashSync(password, 10);
+  const newUser = { username, password: hash, role: 'admin', email, verified: false };
+  users.push(newUser);
+  writeJSON(usersPath, users);
+
+  // create verification token
+  const token = jwt.sign({ username: newUser.username, email: newUser.email }, JWT_SECRET, { expiresIn: '7d' });
+  const verifyUrl = `${req.protocol}://${req.get('host')}/api/verify?token=${token}`;
+
+  if (mailer) {
+    mailer.sendMail({ from: FROM_EMAIL, to: newUser.email, subject: 'Verify your PowerHosting account', text: `Click to verify: ${verifyUrl}`, html: `Click to verify: <a href="${verifyUrl}">${verifyUrl}</a>` })
+      .then(()=> res.json({ ok: true, message: 'verification email sent' }))
+      .catch(err=> { console.error('mail error', err); res.json({ ok: true, message: 'user created, but failed to send email' }); });
+  } else {
+    // no mailer: return link in response (for dev)
+    res.json({ ok: true, verifyUrl });
+  }
+});
+
+// Verify email link
+app.get('/api/verify', (req, res) => {
+  const token = req.query.token;
+  if (!token) return res.status(400).send('token required');
+  try {
+    const data = jwt.verify(token, JWT_SECRET);
+    const users = readJSON(usersPath, []);
+    const u = users.find(x => x.username === data.username && x.email === data.email);
+    if (!u) return res.status(404).send('user not found');
+    u.verified = true;
+    writeJSON(usersPath, users);
+    return res.send('email verified — you can close this page and log in');
+  } catch (e) { return res.status(400).send('invalid token'); }
 });
 
 function auth(req, res, next) {

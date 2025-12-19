@@ -4,4 +4,10 @@
     "password": "ownerpass",
     "role": "owner"
   }
+  ,
+  {
+    "username": "admin",
+    "password": "adminpass",
+    "role": "admin"
+  }
 ]

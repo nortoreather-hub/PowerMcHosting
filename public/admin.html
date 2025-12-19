@@ -4,10 +4,19 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width,initial-scale=1" />
     <title>PowerHosting Admin</title>
-    <style>body{font-family:system-ui,Arial;margin:20px}input,button{padding:6px;margin:4px}</style>
+    <style>
+      body{font-family:system-ui,Arial;margin:0;background:#ffffff}
+      header{background:#ffffff;border-bottom:1px solid #e5e7eb;padding:12px 20px;box-shadow:0 1px 0 rgba(0,0,0,0.04)}
+      header h1{margin:0;font-size:18px}
+      main{padding:20px}
+      input,button{padding:6px;margin:4px}
+    </style>
   </head>
   <body>
-    <h1>PowerHosting — Admin Panel</h1>
+    <header>
+      <h1>PowerHost — Hosting Of PowerMc</h1>
+    </header>
+    <main>
     <div id="login">
       <h3>Login</h3>
       <input id="username" placeholder="username" />
@@ -48,6 +57,7 @@
         <input id="deop_user" placeholder="username to deop" /> <button id="btnDeop">Deop</button>
       </div>
     </div>
+    </main>
 
     <script>
       const api = (path, opts={}) => {

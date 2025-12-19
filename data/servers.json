@@ -9,4 +9,17 @@
     "memory": "1G",
     "access": ["owner"]
   }
+  ,
+  {
+    "id": "powermc",
+    "name": "PowerMc",
+    "host": "powermc",
+    "port": 25565,
+    "rconPort": 25575,
+    "rconPassword": "changeme",
+    "memory": "unlimited",
+    "cores": "unlimited",
+    "owner": "owner",
+    "access": ["owner"]
+  }
 ]

@@ -89,7 +89,10 @@
         if (r.status!==200) { el.innerText = r.body.error || 'error'; return; }
         r.body.forEach(s => {
           const d = document.createElement('div');
+          const publicAddr = s.publicAddress || s.domain || s.host || '';
+          const publicLink = s.domain ? `<a href="https://${s.domain}" target="_blank">${publicAddr}</a>` : `${publicAddr}`;
           d.innerHTML = `<strong>${s.name}</strong> (id:${s.id}) memory: ${s.memory || '1G'} access: ${ (s.access||[]).join(',') } <br/>` +
+            `<div>Public: ${publicLink}</div>` +
             `<input placeholder="username to grant" id="g_${s.id}" /> <button data-id="${s.id}" class="btnGrant">Grant</button> <button data-id="${s.id}" class="btnRevoke">Revoke</button>` +
             `<br/><input placeholder="set memory (e.g. 2G)" id="m_${s.id}" /> <button data-id="${s.id}" class="btnSetMemory">Set Memory</button>`;
           el.appendChild(d);

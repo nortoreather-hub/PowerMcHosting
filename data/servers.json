@@ -20,6 +20,8 @@
     "memory": "unlimited",
     "cores": "unlimited",
     "owner": "owner",
-    "access": ["owner"]
+    "access": ["owner"],
+    "domain": "play.powermc.fun",
+    "publicAddress": "play.powermc.fun:25565"
   }
 ]

@@ -13,6 +13,7 @@
     "express": "^4.18.2",
     "jsonwebtoken": "^9.0.0",
     "bcryptjs": "^2.4.3",
-    "nodemailer": "^6.9.4"
+    "nodemailer": "^6.9.4",
+    "rcon-client": "^5.0.1"
   }
 }

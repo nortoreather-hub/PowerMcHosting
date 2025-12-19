@@ -1,0 +1,25 @@
+version: '3.8'
+services:
+  panel:
+    build: .
+    ports:
+      - "3000:3000"
+    environment:
+      - PORT=3000
+    volumes:
+      - ./:/app
+  minecraft:
+    image: itzg/minecraft-server
+    environment:
+      EULA: "TRUE"
+      ENABLE_RCON: "true"
+      RCON_PASSWORD: "changeme"
+      RCON_PORT: "25575"
+    ports:
+      - "25565:25565"
+      - "25575:25575"
+    volumes:
+      - mc_data:/data
+
+volumes:
+  mc_data:

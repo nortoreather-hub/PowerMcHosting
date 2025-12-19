@@ -5,6 +5,7 @@ const jwt = require('jsonwebtoken');
 const cors = require('cors');
 const bcrypt = require('bcryptjs');
 const nodemailer = require('nodemailer');
+const { Rcon } = require('rcon-client');
 
 const app = express();
 app.use(cors());
@@ -212,47 +213,88 @@ function isAdminOrOwner(req) {
   return req.user && (req.user.role === 'owner' || req.user.role === 'admin');
 }
 
-app.post('/api/players/ban', auth, (req, res) => {
+app.post('/api/players/ban', auth, async (req, res) => {
   if (!isAdminOrOwner(req)) return res.status(403).json({ error: 'forbidden' });
-  const { ip } = req.body || {};
+  const { ip, serverId } = req.body || {};
   if (!ip) return res.status(400).json({ error: 'ip required' });
   const p = readPlayers();
   p.bannedIps = p.bannedIps || [];
   if (!p.bannedIps.includes(ip)) p.bannedIps.push(ip);
   writePlayers(p);
-  res.json({ ok: true });
+  let rconResult = null;
+  if (serverId) {
+    try { rconResult = await sendRconCommand(serverId, `ban-ip ${ip}`); }
+    catch (e) { rconResult = { error: e.message || String(e) }; }
+  }
+  res.json({ ok: true, rcon: rconResult });
 });
 
-app.post('/api/players/unban', auth, (req, res) => {
+app.post('/api/players/unban', auth, async (req, res) => {
   if (!isAdminOrOwner(req)) return res.status(403).json({ error: 'forbidden' });
-  const { ip } = req.body || {};
+  const { ip, serverId } = req.body || {};
   if (!ip) return res.status(400).json({ error: 'ip required' });
   const p = readPlayers();
   p.bannedIps = (p.bannedIps || []).filter(x => x !== ip);
   writePlayers(p);
-  res.json({ ok: true });
+  let rconResult = null;
+  if (serverId) {
+    try { rconResult = await sendRconCommand(serverId, `pardon-ip ${ip}`); }
+    catch (e) { rconResult = { error: e.message || String(e) }; }
+  }
+  res.json({ ok: true, rcon: rconResult });
 });
 
-app.post('/api/players/op', auth, (req, res) => {
+app.post('/api/players/op', auth, async (req, res) => {
   if (!isAdminOrOwner(req)) return res.status(403).json({ error: 'forbidden' });
-  const { username } = req.body || {};
+  const { username, serverId } = req.body || {};
   if (!username) return res.status(400).json({ error: 'username required' });
   const p = readPlayers();
   p.operators = p.operators || [];
   if (!p.operators.includes(username)) p.operators.push(username);
   writePlayers(p);
-  res.json({ ok: true });
+  let rconResult = null;
+  if (serverId) {
+    try { rconResult = await sendRconCommand(serverId, `op ${username}`); }
+    catch (e) { rconResult = { error: e.message || String(e) }; }
+  }
+  res.json({ ok: true, rcon: rconResult });
 });
 
-app.post('/api/players/deop', auth, (req, res) => {
+app.post('/api/players/deop', auth, async (req, res) => {
   if (!isAdminOrOwner(req)) return res.status(403).json({ error: 'forbidden' });
-  const { username } = req.body || {};
+  const { username, serverId } = req.body || {};
   if (!username) return res.status(400).json({ error: 'username required' });
   const p = readPlayers();
   p.operators = (p.operators || []).filter(x => x !== username);
   writePlayers(p);
-  res.json({ ok: true });
+  let rconResult = null;
+  if (serverId) {
+    try { rconResult = await sendRconCommand(serverId, `deop ${username}`); }
+    catch (e) { rconResult = { error: e.message || String(e) }; }
+  }
+  res.json({ ok: true, rcon: rconResult });
 });
+
+// Helper to send RCON commands to a configured server
+async function sendRconCommand(serverId, command) {
+  const servers = readJSON(serversPath, []);
+  const s = servers.find(x => x.id === serverId);
+  if (!s) throw new Error('server_not_found');
+  if (!s.rconPassword) throw new Error('rcon_not_configured');
+  const host = s.host || 'localhost';
+  const port = s.rconPort || 25575;
+  const password = s.rconPassword;
+  const client = new Rcon({ host, port, password });
+  try {
+    await client.connect();
+    const resp = await client.send(command);
+    try { await client.end(); } catch (e) { /* ignore */ }
+    return resp;
+  } catch (e) {
+    try { await client.end(); } catch (err) { /* ignore */ }
+    throw e;
+  }
+}
 
 // Serve frontend
 app.use(express.static(path.join(__dirname, 'public')));

@@ -34,6 +34,9 @@
 
       <h3>Players</h3>
       <div id="players">
+        <label for="player_server">Target server:</label>
+        <select id="player_server"></select>
+        <br/>
         <h4>Banned IPs</h4>
         <div id="bannedIps"></div>
         <input id="ban_ip" placeholder="IP to ban" /> <button id="btnBan">Ban IP</button>
@@ -112,6 +115,10 @@
         const data = r.body || {};
         document.getElementById('bannedIps').innerText = (data.bannedIps||[]).join(', ');
         document.getElementById('ops').innerText = (data.operators||[]).join(', ');
+        // populate server select
+        const servers = (await api('/servers')).body || [];
+        const sel = document.getElementById('player_server'); sel.innerHTML = '';
+        servers.forEach(s => { const o = document.createElement('option'); o.value = s.id; o.text = s.name + ' ('+s.id+')'; sel.appendChild(o); });
       }
 
       document.getElementById('btnCreateUser').onclick = async ()=>{
@@ -120,16 +127,20 @@
       };
 
       document.getElementById('btnBan').onclick = async ()=>{
-        const ip = document.getElementById('ban_ip').value; await api('/players/ban', { method: 'POST', body: JSON.stringify({ ip }) }); loadPlayers();
+        const ip = document.getElementById('ban_ip').value; const serverId = document.getElementById('player_server').value; 
+        await api('/players/ban', { method: 'POST', body: JSON.stringify({ ip, serverId }) }); loadPlayers();
       };
       document.getElementById('btnUnban').onclick = async ()=>{
-        const ip = document.getElementById('unban_ip').value; await api('/players/unban', { method: 'POST', body: JSON.stringify({ ip }) }); loadPlayers();
+        const ip = document.getElementById('unban_ip').value; const serverId = document.getElementById('player_server').value; 
+        await api('/players/unban', { method: 'POST', body: JSON.stringify({ ip, serverId }) }); loadPlayers();
       };
       document.getElementById('btnOp').onclick = async ()=>{
-        const u = document.getElementById('op_user').value; await api('/players/op', { method: 'POST', body: JSON.stringify({ username: u }) }); loadPlayers();
+        const u = document.getElementById('op_user').value; const serverId = document.getElementById('player_server').value; 
+        await api('/players/op', { method: 'POST', body: JSON.stringify({ username: u, serverId }) }); loadPlayers();
       };
       document.getElementById('btnDeop').onclick = async ()=>{
-        const u = document.getElementById('deop_user').value; await api('/players/deop', { method: 'POST', body: JSON.stringify({ username: u }) }); loadPlayers();
+        const u = document.getElementById('deop_user').value; const serverId = document.getElementById('player_server').value; 
+        await api('/players/deop', { method: 'POST', body: JSON.stringify({ username: u, serverId }) }); loadPlayers();
       };
     </script>
   </body>
